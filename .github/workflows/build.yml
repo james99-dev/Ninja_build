@@ -9,7 +9,7 @@ on:
       - main
 env:
   REMOTE_REPOSITORY: pesa1234/openwrt
-  CONFIG_FILE: mt6000.config
+  CONFIG_FILE: mt6000.config  # Assure-toi que c'est le nom de ton fichier sur GitHub
   GH_TOKEN: ${{ github.token }}
 jobs:
   build:
@@ -57,4 +57,25 @@ jobs:
           
       - name: Setup configuration
         run: |
-          [ -f builder_repo/attendedsysupgrade-with-GitHub.patch ] && patch -
+          # On copie ton .config dans la racine du build
+          cp builder_repo/${{ env.CONFIG_FILE }} .config
+          # On copie ton dossier files s'il existe
+          [ -d builder_repo/files ] && cp -r builder_repo/files files
+          make defconfig
+
+      - name: Download packages
+        run: |
+          make download -j8
+          find dl -size -1k -exec ls -l {} \;
+          find dl -size -1k -exec rm -f {} \;
+
+      - name: Compile the firmware
+        run: |
+          echo -e "$(nproc) thread compile"
+          make -j$(nproc) || make -j1 V=s
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: OpenWrt_Flint2_Firmware
+          path: bin/targets/mediatek/filogic/*.bin
