@@ -1,0 +1,83 @@
+name: Build OpenWrt MT6000
+permissions:
+  contents: write
+  actions: write
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+env:
+  REMOTE_REPOSITORY: pesa1234/openwrt
+  CONFIG_FILE: .config
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  build:
+    name: Build OpenWrt
+    runs-on: ubuntu-24.04-arm  # ARM runner comme cjom
+    timeout-minutes: 350
+    steps:
+      - name: Free Disk Space
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+          
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y build-essential clang flex bison g++ gawk gettext libncurses-dev libssl-dev python3-setuptools rsync swig unzip zlib1g-dev file wget llvm
+          
+      - name: Get Remote Branch Name
+        id: get_branch
+        run: |
+          remote_branch=$(git ls-remote https://github.com/${{ env.REMOTE_REPOSITORY }}.git "refs/heads/next-*" | sed -e 's|\(.*heads/\)||' | grep -viE 'test|beta' | sort -V | tail -n1)
+          echo "branch=${remote_branch}" >> $GITHUB_OUTPUT
+          
+      - name: Checkout remote repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.REMOTE_REPOSITORY }}
+          ref: ${{ steps.get_branch.outputs.branch }}
+          
+      - name: Checkout current repository
+        uses: actions/checkout@v4
+        with:
+          path: "builder_repo"
+          
+      - name: Update and install feeds
+        run: |
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+          
+      - name: Setup configuration
+        run: |
+          [ -f builder_repo/attendedsysupgrade-with-GitHub.patch ] && patch -p1 < builder_repo/attendedsysupgrade-with-GitHub.patch
+          [ -d builder_repo/files ] && mv -v builder_repo/files ./
+          mv -v builder_repo/${{ env.CONFIG_FILE }} .config
+          rm -rfv builder_repo
+          make defconfig
+          
+      - name: Build firmware
+        run: |
+          make download -j$(nproc)
+          make -j$(($(nproc) + 1)) V=s || make -j1 V=s
+          
+      - name: Prepare Artifacts
+        run: |
+          mkdir -p firmware
+          find ./bin -type f \( -iname 'openwrt-*-sysupgrade.bin' -or -iname 'config.buildinfo' -or -iname 'version.buildinfo' \) -exec mv -v {} ./firmware/ \;
+          cp .config firmware/full.config
+          cd firmware && sha256sum openwrt-*-sysupgrade.bin > sha256sums
+          
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: gl-mt6000-firmware
+          path: firmware/*
