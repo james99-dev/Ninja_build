@@ -9,13 +9,12 @@ on:
       - main
 env:
   REMOTE_REPOSITORY: pesa1234/openwrt
-  CONFIG_FILE: .config
+  CONFIG_FILE: mt6000.config
   GH_TOKEN: ${{ github.token }}
-
 jobs:
   build:
     name: Build OpenWrt
-    runs-on: ubuntu-24.04-arm  # ARM runner comme cjom
+    runs-on: ubuntu-24.04-arm
     timeout-minutes: 350
     steps:
       - name: Free Disk Space
@@ -58,26 +57,4 @@ jobs:
           
       - name: Setup configuration
         run: |
-          [ -f builder_repo/attendedsysupgrade-with-GitHub.patch ] && patch -p1 < builder_repo/attendedsysupgrade-with-GitHub.patch
-          [ -d builder_repo/files ] && mv -v builder_repo/files ./
-          mv -v builder_repo/${{ env.CONFIG_FILE }} .config
-          rm -rfv builder_repo
-          make defconfig
-          
-      - name: Build firmware
-        run: |
-          make download -j$(nproc)
-          make -j$(($(nproc) + 1)) V=s || make -j1 V=s
-          
-      - name: Prepare Artifacts
-        run: |
-          mkdir -p firmware
-          find ./bin -type f \( -iname 'openwrt-*-sysupgrade.bin' -or -iname 'config.buildinfo' -or -iname 'version.buildinfo' \) -exec mv -v {} ./firmware/ \;
-          cp .config firmware/full.config
-          cd firmware && sha256sum openwrt-*-sysupgrade.bin > sha256sums
-          
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: gl-mt6000-firmware
-          path: firmware/*
+          [ -f builder_repo/attendedsysupgrade-with-GitHub.patch ] && patch -
