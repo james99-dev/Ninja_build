@@ -78,4 +78,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: OpenWrt_Flint2_Firmware
-          path: bin/targets/mediatek/filogic/*.bin
+          path: bin/targets/mediatek/**/*.bin  # Le '**' permet de chercher dans tous les sous-dossiers
+          if-no-files-found: error # Si ça échoue encore, on veut savoir pourquoi !
