@@ -9,7 +9,7 @@ on:
       - main
 env:
   REMOTE_REPOSITORY: pesa1234/openwrt
-  CONFIG_FILE: mt6000.config  # Assure-toi que c'est le nom de ton fichier sur GitHub
+  CONFIG_FILE: mt6000.config
   GH_TOKEN: ${{ github.token }}
 jobs:
   build:
@@ -57,26 +57,39 @@ jobs:
           
       - name: Setup configuration
         run: |
-          # On copie ton .config dans la racine du build
           cp builder_repo/${{ env.CONFIG_FILE }} .config
-          # On copie ton dossier files s'il existe
-          [ -d builder_repo/files ] && cp -r builder_repo/files files
+          [ -d builder_repo/files ] && cp -r builder_repo/files files || true
+          [ -f builder_repo/attendedsysupgrade-with-GitHub.patch ] && patch -p1 < builder_repo/attendedsysupgrade-with-GitHub.patch || true
+          rm -rf builder_repo
           make defconfig
-
+          
       - name: Download packages
         run: |
-          make download -j8
+          make download -j$(nproc)
           find dl -size -1k -exec ls -l {} \;
           find dl -size -1k -exec rm -f {} \;
-
+          
       - name: Compile the firmware
         run: |
           echo -e "$(nproc) thread compile"
           make -j$(nproc) || make -j1 V=s
-
+          
+      - name: Prepare Artifacts
+        run: |
+          mkdir -p firmware
+          echo "=== Searching for firmware files ==="
+          find ./bin -name '*sysupgrade.bin' -type f
+          echo "=== Copying files ==="
+          find ./bin -name '*sysupgrade.bin' -exec cp -v {} ./firmware/ \;
+          find ./bin -name 'config.buildinfo' -exec cp -v {} ./firmware/ \; || true
+          find ./bin -name 'version.buildinfo' -exec cp -v {} ./firmware/ \; || true
+          cp .config firmware/full.config || true
+          echo "=== Files in firmware/ ==="
+          ls -lah ./firmware/
+          cd firmware && sha256sum *.bin > sha256sums || true
+          
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: OpenWrt_Flint2_Firmware
-          path: bin/targets/mediatek/**/*.bin  # Le '**' permet de chercher dans tous les sous-dossiers
-          if-no-files-found: error # Si ça échoue encore, on veut savoir pourquoi !
+          name: gl-mt6000-firmware
+          path: firmware/*
