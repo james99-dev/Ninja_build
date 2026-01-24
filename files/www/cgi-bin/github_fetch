@@ -1,0 +1,40 @@
+#!/bin/sh
+export PATH=/usr/sbin:/usr/bin:/sbin:/bin
+printf 'Content-Type: application/json\n\n'
+
+# Récupération de l'URL envoyée par LuCI
+read -r POST_DATA
+URL=$(echo "$POST_DATA" | jq -r '.url')
+FIRMWAREFILE="/tmp/firmware.bin"
+
+if [ -z "$URL" ] || [ "$URL" = "null" ]; then
+    printf '{"error":"URL manquante"}'
+    exit 1
+fi
+
+# 1. On récupère le nom du fichier pour trouver son hash plus tard
+FILENAME=$(basename "$URL")
+
+# 2. Téléchargement du firmware
+if curl -sSL -o "$FIRMWAREFILE" "$URL"; then
+    # 3. Récupération du SHA256 depuis ton fichier sha256sums sur GitHub
+    # On remplace le nom du firmware par 'sha256sums' dans l'URL
+    SHA_URL=$(echo "$URL" | sed "s/$FILENAME/sha256sums/")
+    SHA256=$(curl -sSL "$SHA_URL" | grep "$FILENAME" | awk '{print $1}')
+
+    if [ -n "$SHA256" ]; then
+        # 4. Vérification du hash
+        if printf '%s  %s\n' "$SHA256" "$FIRMWAREFILE" | sha256sum -cs; then
+            printf '{"success":true,"path":"%s"}' "$FIRMWAREFILE"
+        else
+            printf '{"error":"SHA256 mismatch - Fichier corrompu"}'
+            rm -f "$FIRMWAREFILE"
+        fi
+    else
+        # Si le hash est introuvable, on laisse passer mais avec un avertissement (ou on bloque)
+        printf '{"success":true,"path":"%s","warning":"Hash non vérifié"}' "$FIRMWAREFILE"
+    fi
+else
+    printf '{"error":"Échec du téléchargement"}'
+    exit 1
+fi

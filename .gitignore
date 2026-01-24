@@ -13,7 +13,7 @@
 /logs
 /feeds
 /feeds.conf
-/files
+#/files
 /target/linux/feeds
 /overlay
 /package/feeds
@@ -25,9 +25,17 @@ private-key.pem
 public-key.pem
 *.orig
 *.rej
+# Ne jamais monter sur GitHub
+files/etc/config/
+files/etc/uci-defaults/
+files/root/
+files/etc/shadow
+files/etc/passwd
 *~
 .#*
 *#
+files/etc/ssh/ssh_host_*
+files/root/.ssh/
 .emacs.desktop*
 TAGS*~
 git-src

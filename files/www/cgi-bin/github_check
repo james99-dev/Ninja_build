@@ -1,0 +1,13 @@
+cat << 'EOF' > /www/cgi-bin/github_check
+#!/bin/sh
+echo "Content-type: application/json"
+echo ""
+
+curl -sS "https://api.github.com/repos/james99-dev/Ninja_build/releases" | jq '
+[
+  .[] | {
+    tag: .tag_name,
+    url: (.assets[] | select(.name | contains("sysupgrade.bin")).browser_download_url)
+  }
+] | map(select(.url != null))'
+EOF

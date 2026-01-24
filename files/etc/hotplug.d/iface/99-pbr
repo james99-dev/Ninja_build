@@ -1,0 +1,20 @@
+#!/bin/sh
+# On réagit si le WAN, Proton ou ton serveur VPN monte
+if [ "$ACTION" = "ifup" ]; then
+    if [ "$INTERFACE" = "wan" ] || [ "$INTERFACE" = "proton_vpn" ] || [ "$INTERFACE" = "server_vpn" ]; then
+        logger -t hotplug "Action Réseau : L'interface $INTERFACE est prête. Synchronisation des services..."
+        
+        # 1. Redémarre PBR pour forcer Wealthsimple hors du VPN (priorité trading)
+        /etc/init.d/pbr restart
+        
+        # 2. Actions spécifiques au démarrage de la connexion Internet (WAN)
+        if [ "$INTERFACE" = "wan" ]; then
+            # Force la mise à jour de ton IP réelle vers DuckDNS via script custom
+            /root/ddns_update.sh
+            
+            # Rafraîchit ton serveur pour que ton Pixel puisse se connecter à la nouvelle IP
+            ifup server_vpn
+        fi
+    fi
+fi
+
