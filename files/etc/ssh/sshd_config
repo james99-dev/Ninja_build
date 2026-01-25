@@ -1,4 +1,5 @@
 # Configuration "Cuite" pour Flint 2 - Key-based ONLY
+Include /etc/ssh/sshd_config.d/*.conf
 Port 22
 ListenAddress 0.0.0.0
 
