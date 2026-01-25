@@ -3,7 +3,7 @@ cat << 'EOF' > /www/cgi-bin/github_check
 echo "Content-type: application/json"
 echo ""
 
-curl -sS "https://api.github.com/repos/james99-dev/Ninja_build/releases" | jq '
+curl -sS "https://api.github.com/repos/XXXXXX/YYYYYY/releases" | jq '
 [
   .[] | {
     tag: .tag_name,
