@@ -44,3 +44,4 @@ git-src
 .ccache
 .vscode*
 recompile.sh
+sync_ninja.sh
