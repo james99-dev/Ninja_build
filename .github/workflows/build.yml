@@ -2,10 +2,11 @@ name: Build OpenWrt MT6000
 permissions:
   contents: write
   actions: write
+
 on:
   workflow_dispatch:
   push:
-    tags:         # Ajouté : Se déclenche quand tu crées un tag (ex: v1.0.1)
+    tags:
       - 'v*'
 
 env:
@@ -29,54 +30,72 @@ jobs:
           large-packages: true
           docker-images: true
           swap-storage: true
-          
+
       - name: Install dependencies
         run: |
           sudo apt update
           sudo apt install -y build-essential clang flex bison g++ gawk gettext libncurses-dev libssl-dev python3-setuptools rsync swig unzip zlib1g-dev file wget llvm
-          
+
       - name: Get Remote Branch Name
         id: get_branch
         run: |
           remote_branch=$(git ls-remote https://github.com/${{ env.REMOTE_REPOSITORY }}.git "refs/heads/next-*" | sed -e 's|\(.*heads/\)||' | grep -viE 'test|beta' | sort -V | tail -n1)
           echo "branch=${remote_branch}" >> $GITHUB_OUTPUT
-          
+
       - name: Checkout remote repository
         uses: actions/checkout@v4
         with:
           repository: ${{ env.REMOTE_REPOSITORY }}
           ref: ${{ steps.get_branch.outputs.branch }}
-          
+
       - name: Checkout current repository
         uses: actions/checkout@v4
         with:
           path: "builder_repo"
-          
+
       - name: Update and install feeds
         run: |
           ./scripts/feeds update -a
           ./scripts/feeds install -a
-          
+
       - name: Setup configuration
         run: |
+          # 1. Nettoyage initial
+          rm -rf builder_repo/.git builder_repo/.github
+
+          # 2. Patching des placeholders (Remplace XXXXXX/YYYYYY par ton repo actuel)
+          # Indispensable pour tes scripts github_check
+          for file in $(grep -rl XXXXXX builder_repo/); do 
+            echo "Patching: $file"
+            sed -i 's|XXXXXX/YYYYYY|${{ github.repository }}|g' "$file" || exit 1
+          done
+
+          # 3. Copie de ta configuration et de tes fichiers personnalisés
           cp builder_repo/${{ env.CONFIG_FILE }} .config
-          # Ton dossier "files" avec tes scripts est copié ici
           [ -d builder_repo/files ] && cp -r builder_repo/files files || true
+          
+          # 4. Application du patch attendedsysupgrade
           [ -f builder_repo/attendedsysupgrade-with-GitHub.patch ] && patch -p1 < builder_repo/attendedsysupgrade-with-GitHub.patch || true
+          
+          # 5. Application des permissions d'exécution sur tes scripts
+          chmod -v 755 files/usr/bin/upgrade_custom_openwrt 2>/dev/null || true
+          chmod -v 755 files/www/cgi-bin/github_* 2>/dev/null || true
+
+          # 6. Nettoyage final du repo temporaire et génération de la config
           rm -rf builder_repo
           make defconfig
-          
+
       - name: Download packages
         run: |
           make download -j$(nproc)
           find dl -size -1k -exec ls -l {} \;
           find dl -size -1k -exec rm -f {} \;
-          
+
       - name: Compile the firmware
         run: |
           echo -e "$(nproc) thread compile"
           make -j$(nproc) || make -j1 V=s
-          
+
       - name: Prepare Artifacts
         run: |
           mkdir -p firmware
@@ -90,14 +109,13 @@ jobs:
           echo "=== Files in firmware/ ==="
           ls -lah ./firmware/
           cd firmware && sha256sum *.bin > sha256sums || true
-          
+
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: gl-mt6000-firmware
           path: firmware/*
 
-      # --- SECTION AJOUTÉE : CRÉATION DE LA RELEASE GITHUB ---
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
@@ -113,5 +131,6 @@ jobs:
             Build généré le : ${{ github.event.head_commit.timestamp }}
           draft: false
           prerelease: false
+          allow_updates: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
