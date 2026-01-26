@@ -13,7 +13,6 @@
 /logs
 /feeds
 /feeds.conf
-#/files
 /target/linux/feeds
 /overlay
 /package/feeds
@@ -25,7 +24,6 @@ private-key.pem
 public-key.pem
 *.orig
 *.rej
-# Ne jamais monter sur GitHub
 files/etc/config/
 files/etc/uci-defaults/
 files/root/
