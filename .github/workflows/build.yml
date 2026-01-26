@@ -63,8 +63,7 @@ jobs:
           # 1. Nettoyage initial
           rm -rf builder_repo/.git builder_repo/.github
 
-          # 2. Patching des placeholders (Remplace XXXXXX/YYYYYY par ton repo actuel)
-          # Indispensable pour tes scripts github_check
+          # 2. Patching des placeholders
           for file in $(grep -rl XXXXXX builder_repo/); do 
             echo "Patching: $file"
             sed -i 's|XXXXXX/YYYYYY|${{ github.repository }}|g' "$file" || exit 1
@@ -80,6 +79,7 @@ jobs:
           # 5. Application des permissions d'exécution sur tes scripts
           chmod -v 755 files/usr/bin/upgrade_custom_openwrt 2>/dev/null || true
           chmod -v 755 files/www/cgi-bin/github_* 2>/dev/null || true
+          chmod -v 755 files/root/toggle_toronto.sh 2>/dev/null || true
 
           # 6. Nettoyage final du repo temporaire et génération de la config
           rm -rf builder_repo
@@ -132,5 +132,14 @@ jobs:
           draft: false
           prerelease: false
           allow_updates: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Cleanup old releases
+        uses: dev-drprasad/delete-older-releases@v0.3.4
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          keep_latest: 3
+          delete_tags: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
