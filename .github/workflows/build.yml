@@ -69,19 +69,20 @@ jobs:
             sed -i 's|XXXXXX/YYYYYY|${{ github.repository }}|g' "$file" || exit 1
           done
 
-          # 3. Copie de ta configuration et de tes fichiers personnalisés
+          # 3. Copie de ta configuration, fichiers et documentation
           cp builder_repo/${{ env.CONFIG_FILE }} .config
+          cp builder_repo/release_info.md . || true
           [ -d builder_repo/files ] && cp -r builder_repo/files files || true
           
           # 4. Application du patch attendedsysupgrade
           [ -f builder_repo/attendedsysupgrade-with-GitHub.patch ] && patch -p1 < builder_repo/attendedsysupgrade-with-GitHub.patch || true
           
-          # 5. Application des permissions d'exécution sur tes scripts
+          # 5. Application des permissions d'exécution
           chmod -v 755 files/usr/bin/upgrade_custom_openwrt 2>/dev/null || true
           chmod -v 755 files/www/cgi-bin/github_* 2>/dev/null || true
           chmod -v 755 files/root/toggle_toronto.sh 2>/dev/null || true
 
-          # 6. Nettoyage final du repo temporaire et génération de la config
+          # 6. Nettoyage final
           rm -rf builder_repo
           make defconfig
 
@@ -99,15 +100,10 @@ jobs:
       - name: Prepare Artifacts
         run: |
           mkdir -p firmware
-          echo "=== Searching for firmware files ==="
-          find ./bin -name '*sysupgrade.bin' -type f
-          echo "=== Copying files ==="
           find ./bin -name '*sysupgrade.bin' -exec cp -v {} ./firmware/ \;
           find ./bin -name 'config.buildinfo' -exec cp -v {} ./firmware/ \; || true
           find ./bin -name 'version.buildinfo' -exec cp -v {} ./firmware/ \; || true
           cp .config firmware/full.config || true
-          echo "=== Files in firmware/ ==="
-          ls -lah ./firmware/
           cd firmware && sha256sum *.bin > sha256sums || true
 
       - name: Upload Artifact
@@ -126,9 +122,7 @@ jobs:
             firmware/version.buildinfo
           tag_name: ${{ github.ref_name }}
           name: Ninja Build ${{ github.ref_name }}
-          body: |
-            Mise à jour automatique pour Flint 2 (MT6000) ⛳️
-            Build généré le : ${{ github.event.head_commit.timestamp }}
+          body_path: release_info.md
           draft: false
           prerelease: false
           allow_updates: true
