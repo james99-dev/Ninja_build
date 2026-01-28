@@ -10,21 +10,27 @@ Custom high-performance build based on **OpenWrt Master**. Optimized for speed, 
 
 ## 🛠️ Main Features & Inclusions
 - **Kernel**: 6.12.x (Master branch)
-- **Wi-Fi**: MediaTek proprietary ucode & tweaks (via Pesa/Cjom).
+- **Management UI**: `luci-app-advanced` (Deep system tuning) & `luci-app-commands` (Custom script execution).
 - **DNS/Network**: `dnsmasq-full` (with DNSSEC & NFT set support), `irqbalance`, `pbr` (Policy Based Routing).
 - **VPN**: Wireguard integration with `luci-proto-wireguard`.
 - **System**: OpenSSH Server (configured for key-based auth), `jq`, `gawk`, `curl`, `htop`.
 - **Media**: `minidlna` for local streaming.
-- **Custom Scripts**: `toggle_xxxxx` included for on-the-fly routing management.
+- **Custom Scripts**: `toggle_xxxx` (or equivalent) for on-the-fly routing management and Duckdns script.
+
+## 📶 Wireless Performance (via Pesa1234)
+Optimized MediaTek proprietary drivers and tweaks:
+- **WED (Wireless Ethernet Dispatch)**: Hardware offloading enabled for maximum throughput.
+- **Advanced Coverage**: Implicit Beamforming (iBF) and VHT (QAM-256) on 2.4GHz and 5GHz band.
+- **Stability**: Optimized EDCCA and airtime fairness for high-density environments.
 
 ## 🚫 Notable Exclusions (Lightweight approach)
 To keep the build lean and fast, the following are **NOT** included:
-- **No IPv6 DHPC**: `odhcp6c` and `odhcpd-ipv6only` are removed.
+- **No IPv6 DHCP**: `odhcp6c` and `odhcpd-ipv6only` are removed.
 - **No mbedTLS**: All packages forced to use OpenSSL for consistency.
-- **No SMB/Samba**: USB storage is supported via Kernel, but network sharing is excluded.
+- **No SMB/Samba**: Focus is on routing performance, not NAS functions.
 - **No Debugging**: Kernel Debug FS and Kallsyms are disabled to reduce overhead.
 
 ## 📦 Build Details
-- **Build User**: builder
-- **Build Domain**: buildhost
+- **Build User**: Ninja-Builder
+- **Build Date**: 2026-01-27
 - **Tag**: ${{ github.ref_name }}
