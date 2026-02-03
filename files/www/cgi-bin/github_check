@@ -3,8 +3,8 @@ echo "Content-Type: application/json"
 echo ""
 curl -sS "https://api.github.com/repos/XXXXXX/YYYYYY/releases?per_page=5" | \
 jq -c 'map(select(.draft == false)) | map({
-    id: .id,
     tag: .tag_name,
     version: .tag_name,
-    url: ([.assets[] | select(.name | (contains("sysupgrade") and endswith(".bin"))) | .browser_download_url][0])
+    updated_at: .updated_at,
+    url: (.assets[] | select(.name | contains("sysupgrade")) | .browser_download_url)
 })'

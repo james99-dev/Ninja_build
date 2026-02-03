@@ -1,4 +1,27 @@
 #!/bin/sh
-# Force la mise à jour en effaçant l'ID de comparaison
-rm -f /etc/release_id_build
-/www/cgi-bin/github_fetch latest
+echo "=== Vérification de mise à jour disponible ==="
+if [ -f /etc/release_build_date ]; then
+    LOCAL_DATE=$(cat /etc/release_build_date)
+    echo "Date locale : $LOCAL_DATE"
+else
+    LOCAL_DATE=""
+    echo "Aucune date locale trouvée"
+fi
+RESPONSE=$(QUERY_STRING="tag=latest" /www/cgi-bin/github_check)
+GITHUB_DATE=$(echo "$RESPONSE" | sed 's/Content-Type: application\/json//' | jq -r '.[0].updated_at // empty')
+echo "Date GitHub : $GITHUB_DATE"
+if [ -n "$LOCAL_DATE" ] && [ "$LOCAL_DATE" = "$GITHUB_DATE" ]; then
+    echo "✅ Déjà à jour"
+    exit 0
+fi
+echo "🔄 Nouvelle version détectée!"
+echo "Téléchargement..."
+FETCH_RESPONSE=$(QUERY_STRING="tag=latest" /www/cgi-bin/github_fetch)
+if echo "$FETCH_RESPONSE" | grep -q '"success":true'; then
+    echo "✅ Téléchargement réussi!"
+    echo "$GITHUB_DATE" > /etc/release_build_date
+    echo "📦 Firmware dans /tmp/firmware.bin"
+else
+    echo "❌ Erreur"
+    exit 1
+fi
