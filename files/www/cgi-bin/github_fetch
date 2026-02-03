@@ -1,0 +1,49 @@
+#!/bin/sh
+printf 'Content-Type: application/json\n\n'
+
+# Ces variables seront remplacées par ton workflow
+REPO="XXXXXX/YYYYYY"
+USER_AGENT="OpenWrt-Builder"
+LAST_ID_FILE="/etc/release_id_build"
+
+# 1. Récupération du TAG
+QUERY_STRING="${QUERY_STRING:-$1}"
+TAG=$(echo "$QUERY_STRING" | sed -n 's/.*tag=\([^&]*\).*/\1/p')
+[ -z "$TAG" ] || [ "$TAG" = "undefined" ] && TAG="latest"
+
+# 2. On récupère l'ID de la release avant de télécharger le gros fichier
+if [ "$TAG" = "latest" ]; then
+    RELEASE_URL="https://api.github.com/repos/$REPO/releases/latest"
+else
+    RELEASE_URL="https://api.github.com/repos/$REPO/releases/tags/$TAG"
+fi
+
+RELEASE_JSON=$(curl -sS -L -H "User-Agent: $USER_AGENT" "$RELEASE_URL")
+ID=$(echo "$RELEASE_JSON" | jq -r '.id' | tr -d '[:space:]')
+
+# --- INTELLIGENCE : Comparaison de l'ID ---
+if [ -f "$LAST_ID_FILE" ] && [ "$TAG" = "latest" ]; then
+    CURRENT_ID=$(cat "$LAST_ID_FILE" | tr -d '[:space:]')
+    if [ "$ID" = "$CURRENT_ID" ]; then
+        printf '{"success":true,"message":"Already up to date","id":"%s"}' "$ID"
+        exit 0
+    fi
+fi
+
+# 3. Extraction des URLs
+URL=$(echo "$RELEASE_JSON" | jq -r '[.assets[] | select(.name | (contains("sysupgrade") and endswith(".bin"))) | .browser_download_url][0]')
+SHA256_URL=$(echo "$RELEASE_JSON" | jq -r '.assets[] | select(.name | contains("sha256sums")) | .browser_download_url' | head -n1)
+
+if [ -z "$URL" ] || [ "$URL" = "null" ]; then
+    printf '{"error":"Firmware URL not found"}'
+    exit 1
+fi
+
+# 4. Téléchargement et Vérification
+FIRMWAREFILE="/tmp/firmware.bin"
+if curl -sS -L -H "User-Agent: $USER_AGENT" -o "$FIRMWAREFILE" "$URL"; then
+   
+    printf '{"success":true,"path":"%s"}' "$FIRMWAREFILE"
+else
+    printf '{"error":"Download failed"}'
+fi

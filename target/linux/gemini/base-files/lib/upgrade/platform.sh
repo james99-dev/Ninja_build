@@ -1,27 +1,19 @@
 REQUIRE_IMAGE_METADATA=1
 MTDSYSFS=/sys/class/mtd
 
-gemini_check_redboot_parts() {
-	MTD1OF=`cat ${MTDSYSFS}/mtd1/offset`
-	MTD2OF=`cat ${MTDSYSFS}/mtd2/offset`
-	MTD3OF=`cat ${MTDSYSFS}/mtd3/offset`
-	MTD4OF=`cat ${MTDSYSFS}/mtd4/offset`
-	MTD1SZ=$((${MTD2OF} - ${MTD1OF}))
-	MTD2SZ=$((${MTD3OF} - ${MTD2OF}))
-	MTD3SZ=$((${MTD4OF} - ${MTD3OF}))
+gemini_do_platform_upgrade() {
 	ESZ=`cat ${MTDSYSFS}/mtd1/erasesize`
 	if test ${ESZ} == 131072 ; then
-		echo "MTD has 128kb EB size"
+		echo "MTD1 has 128kb EB size..."
 	else
-		echo "MTD has wrong EB size!"
+		echo "MTD1 has wrong EB size!"
 	fi
-	KSZ=$(($ESZ * $2))
-	RSZ=$(($ESZ * $3))
-	ASZ=$(($ESZ * $4))
 	NAME=`cat ${MTDSYSFS}/mtd1/name`
+	SZ=`cat ${MTDSYSFS}/mtd1/size`
+	KSZ=$(($ESZ * $2))
 	if test "x${NAME}" == "xKern" ; then
-		if test ${MTD1SZ} == ${KSZ} ; then
-			echo "MTD1 Kern ${MTD1SZ} OK..."
+		if test ${SZ} == ${KSZ} ; then
+			echo "MTD1 OK..."
 		else
 			echo "MTD1 is wrong size, aborting" >&2
 			exit 1
@@ -31,11 +23,13 @@ gemini_check_redboot_parts() {
 		exit 1
 	fi
 	NAME=`cat ${MTDSYSFS}/mtd2/name`
+	SZ=`cat ${MTDSYSFS}/mtd2/size`
+	RSZ=$(($ESZ * $3))
 	if test "x${NAME}" == "xRamdisk" ; then
-		if test ${MTD2SZ} == ${RSZ} ; then
-			echo "MTD2 Ramdisk ${MTD2SZ} OK..."
+		if test ${SZ} == ${RSZ} ; then
+			echo "MTD2 OK..."
 		else
-			echo "MTD2 is at wrong offset, aborting" >&2
+			echo "MTD2 is wrong size, aborting" >&2
 			exit 1
 		fi
 	else
@@ -43,34 +37,32 @@ gemini_check_redboot_parts() {
 		exit 1
 	fi
 	NAME=`cat ${MTDSYSFS}/mtd3/name`
+	SZ=`cat ${MTDSYSFS}/mtd3/size`
+	ASZ=$(($ESZ * $4))
 	if test "x${NAME}" == "xApplication" ; then
-		if test ${MTD3SZ} == ${ASZ} ; then
-			echo "MTD3 Application ${MTD3SZ} OK..."
+		if test ${SZ} == ${ASZ} ; then
+			echo "MTD3 OK..."
 		else
-			echo "MTD3 is at wrong offset, aborting" >&2
+			echo "MTD3 is wrong size, aborting" >&2
 			exit 1
 		fi
 	else
 		echo "MTD3 has wrong name, aborting" >&2
 		exit 1
 	fi
-}
-
-gemini_do_platform_upgrade() {
 	echo "Extract the three firmware parts"
+	tar xvfz "$1"; rm "$1"
+	sync
 	echo 3 > /proc/sys/vm/drop_caches
 	echo "COMMENCING UPGRADE. BE PATIENT, THIS IS NOT FAST!"
-	KFSZ=$(tar xfz "$1" zImage -O | wc -c)
-	echo "Upgrade Kern partition (kernel part 1, size ${KFSZ})"
-	tar xfz "$1" zImage -O | mtd write - Kern
+	echo "Upgrade Kern partition (kernel part 1, $2 erase blocks)"
+	mtd write zImage Kern
 	[ $? -ne 0 ] && exit 1
-	RFSZ=$(tar xfz "$1" rd.gz -O | wc -c)
-	echo "Upgrade Ramdisk partition (kernel part 2, size ${RFSZ})"
-	tar xfz "$1" rd.gz -O | mtd write - Ramdisk
+	echo "Upgrade Ramdisk partition (kernel part 2, $3 erase blocks)"
+	mtd write rd.gz Ramdisk
 	[ $? -ne 0 ] && exit 1
-	AFSZ=$(tar xfz "$1" hddapp.tgz -O | wc -c)
-	echo "Upgrade Application partition (rootfs, size ${AFSZ})"
-	tar xfz "$1" hddapp.tgz -O | mtd write - Application
+	echo "Upgrade Application partition (rootfs, $4 erase blocks)"
+	mtd write hddapp.tgz Application
 	[ $? -ne 0 ] && exit 1
 }
 
@@ -102,12 +94,10 @@ platform_do_upgrade() {
 		;;
 	itian,sq201|\
 	storlink,gemini324)
-		gemini_check_redboot_parts "$1" 16 48 48
-		gemini_do_platform_upgrade "$1"
+		gemini_do_platform_upgrade "$1" 16 48 48
 		;;
 	raidsonic,ib-4220-b)
-		gemini_check_redboot_parts "$1" 24 48 48
-		gemini_do_platform_upgrade "$1"
+		gemini_do_platform_upgrade "$1" 24 48 48
 		;;
 	esac
 }

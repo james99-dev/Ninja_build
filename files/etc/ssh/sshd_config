@@ -1,0 +1,27 @@
+# Configuration "Cuite" pour Flint 2 - Key-based ONLY
+Include /etc/ssh/sshd_config.d/*.conf
+Port 22
+ListenAddress 0.0.0.0
+
+# Clés d'hôte (OpenSSH les générera au boot)
+HostKey /etc/ssh/ssh_host_rsa_key
+HostKey /etc/ssh/ssh_host_ed25519_key
+
+# --- SÉCURITÉ MAXIMALE ---
+# On force l'usage de la clé
+PubkeyAuthentication yes
+AuthorizedKeysFile .ssh/authorized_keys
+
+# On TUE le mot de passe (pas de # ici !)
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+PermitEmptyPasswords no
+
+# Root peut se connecter MAIS uniquement par clé
+PermitRootLogin yes
+
+
+# Divers
+Subsystem sftp /usr/lib/sftp-server
+PrintMotd yes
+TCPKeepAlive yes

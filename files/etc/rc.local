@@ -1,0 +1,23 @@
+#!/bin/sh
+
+# Optimisation des ports 2.5G (WAN et LAN haute vitesse)
+ip link set eth0 txqueuelen 4000 2>/dev/null
+ip link set eth1 txqueuelen 4000 2>/dev/null
+
+# Optimisation du Bridge (Wi-Fi + LAN combinés)
+ip link set br-lan txqueuelen 4000 2>/dev/null
+
+# Optimisation des ports LAN 1G individuels
+for i in 1 2 3 4 5; do
+    ip link set lan$i txqueuelen 4000 2>/dev/null
+done
+
+chmod 700 /root/.ssh
+chmod 600 /root/.ssh/authorized_keys
+chmod 600 /etc/ssh/sshd_config
+
+# SSH hardening
+awk '$5 >= 3071' /etc/ssh/moduli > /etc/ssh/moduli.safe
+mv /etc/ssh/moduli.safe /etc/ssh/moduli
+
+exit 0

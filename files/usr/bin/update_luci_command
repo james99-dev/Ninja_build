@@ -1,0 +1,4 @@
+#!/bin/sh
+# Force la mise à jour en effaçant l'ID de comparaison
+rm -f /etc/release_id_build
+/www/cgi-bin/github_fetch latest

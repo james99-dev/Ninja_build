@@ -1,0 +1,2 @@
+0 */6 * * * /root/ddns_update.sh
+00 04 * * 1 /www/cgi-bin/github_fetch latest
