@@ -4,9 +4,6 @@ permissions:
   actions: write
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
 
 env:
@@ -92,7 +89,6 @@ jobs:
           mv -v builder_repo/${{ env.CONFIG_FILE }} .config
           cp builder_repo/release_info.md . || echo "release_info.md not found"
           
-          # Permissions pour les scripts (Nettoyé : ninja_update enlevé)
           chmod -v 755 files/usr/bin/upgrade_custom_openwrt 2>/dev/null || true
           chmod -v 755 files/usr/bin/update_luci_command 2>/dev/null || true
           chmod -v 755 files/www/cgi-bin/github_* 2>/dev/null || true
@@ -139,6 +135,26 @@ jobs:
           echo "=== Files ready for release ==="
           ls -lh firmware/
 
+      - name: Delete old latest release
+        continue-on-error: true
+        run: |
+          gh release delete latest --yes || true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Clean up old releases and tags
+        continue-on-error: true
+        run: |
+          gh release list --limit 100 | grep -v "latest" | awk '{print $3}' | while read tag; do
+            if [ ! -z "$tag" ]; then
+              echo "Deleting release and tag: $tag"
+              gh release delete "$tag" --yes || true
+              git push origin :refs/tags/"$tag" || true
+            fi
+          done
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -146,7 +162,7 @@ jobs:
           files: |
             firmware/*
           tag_name: latest
-          name: "Ninja Build - ${{ steps.prepare.outputs.tag }}"
+          name: "Latest Build"
           draft: false
           prerelease: false
           make_latest: true
