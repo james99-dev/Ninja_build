@@ -1,0 +1,7 @@
+#!/bin/sh
+# Sauvegarde la date du build installé
+RESPONSE=$(curl -sS "https://api.github.com/repos/XXXXXX/YYYYYY/releases/latest" 2>/dev/null)
+if [ $? -eq 0 ]; then
+    echo "$RESPONSE" | jq -r '.updated_at' > /etc/release_build_date
+fi
+exit 0

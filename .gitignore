@@ -25,7 +25,8 @@ public-key.pem
 *.orig
 *.rej
 files/etc/config/
-files/etc/uci-defaults/
+files/etc/uci-defaults/*
+!files/etc/uci-defaults/99-save-build-date
 files/root/
 files/etc/shadow
 files/etc/passwd

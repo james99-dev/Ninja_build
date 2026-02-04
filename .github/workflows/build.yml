@@ -79,7 +79,7 @@ jobs:
           fi
           
           echo "=== Replacing XXXXXX/YYYYYY in files/ ==="
-          find files/ -type f \( -name "github_*" -o -name "upgrade_custom_openwrt" -o -name "update_luci_command" \) | while read file; do
+          find files/ -type f \( -name "github_*" -o -name "upgrade_custom_openwrt" -o -name "update_luci_command" -o -name "99-save-build-date" \) | while read file; do
             if grep -q "XXXXXX/YYYYYY" "$file" 2>/dev/null; then
               echo "Modifying copied file: $file"
               sed -i "s|XXXXXX/YYYYYY|${{ github.repository }}|g" "$file"
