@@ -35,6 +35,7 @@ files/etc/passwd
 *#
 files/etc/ssh/ssh_host_*
 files/root/.ssh/
+!files/root/update_agh.sh
 .emacs.desktop*
 TAGS*~
 git-src
