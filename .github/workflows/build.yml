@@ -93,6 +93,7 @@ jobs:
           chmod -v 755 files/usr/bin/update_luci_command 2>/dev/null || true
           chmod -v 755 files/www/cgi-bin/github_* 2>/dev/null || true
           chmod -v 755 files/root/toggle_toronto.sh 2>/dev/null || true
+          chmod +x files/root/update_agh.sh 2>/dev/null || true
           chmod -v 755 files/etc/uci-defaults/99-save-build-date 2>/dev/null || true
           
           echo "=== Checking for remaining placeholders ==="
