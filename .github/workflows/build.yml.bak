@@ -33,28 +33,17 @@ jobs:
           sudo apt update
           sudo apt install -y build-essential clang flex bison g++ gawk gettext libncurses-dev libssl-dev python3-setuptools rsync swig unzip zlib1g-dev file wget llvm jq
 
-      - name: Get Remote Branch and SHA
-        id: get_info
+      - name: Get Remote Branch Name
+        id: get_branch
         run: |
-          # 1. Get the latest branch name starting with 'next-' from the remote repo
           remote_branch=$(git ls-remote https://github.com/${{ env.REMOTE_REPOSITORY }}.git "refs/heads/next-*" | sed -e 's|\(.*heads/\)||' | grep -viE 'test|beta' | sort -V | tail -n1)
-          
-          # 2. Get the exact SHA of the latest commit for that branch using GitHub API
-          # This prevents issues with outdated local git caches on GitHub runners
-          latest_sha=$(gh api "repos/${{ env.REMOTE_REPOSITORY }}/commits/${remote_branch}" --jq .sha)
-          
           echo "branch=${remote_branch}" >> $GITHUB_OUTPUT
-          echo "sha=${latest_sha}" >> $GITHUB_OUTPUT
-          
-          echo "Selected Branch: ${remote_branch}"
-          echo "Selected SHA: ${latest_sha}"
 
       - name: Checkout remote repository
         uses: actions/checkout@v4
         with:
           repository: ${{ env.REMOTE_REPOSITORY }}
-          # We use the SHA instead of the branch name to force the most recent code
-          ref: ${{ steps.get_info.outputs.sha }}
+          ref: ${{ steps.get_branch.outputs.branch }}
 
       - name: Checkout current repository
         uses: actions/checkout@v4
@@ -130,4 +119,54 @@ jobs:
           mkdir -p firmware
           ORIGINAL_FILE=$(find ./bin -type f -name "*sysupgrade.bin" 2>/dev/null | grep -E "mt6000|filogic" | head -n 1)
           
-          if
+          if [ -z "$ORIGINAL_FILE" ]; then
+            echo "ERROR: No sysupgrade file found!"
+            exit 1
+          fi
+          
+          cp -v "$ORIGINAL_FILE" ./firmware/
+          find ./bin -name "version.buildinfo" -exec cp -v {} ./firmware/config.buildinfo \; 2>/dev/null || true
+          cp .config ./firmware/config.seed
+          
+          cd firmware
+          sha256sum * > sha256sums
+          cd ..
+          
+          TAG="v-$(date -u +%Y.%m.%d-%H%M)"
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+          echo "=== Files ready for release ==="
+          ls -lh firmware/
+
+      - name: Delete old latest release
+        continue-on-error: true
+        run: |
+          gh release delete latest --yes || true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Clean up old releases and tags
+        continue-on-error: true
+        run: |
+          gh release list --limit 100 | grep -v "latest" | awk '{print $3}' | while read tag; do
+            if [ ! -z "$tag" ]; then
+              echo "Deleting release and tag: $tag"
+              gh release delete "$tag" --yes || true
+              git push origin :refs/tags/"$tag" || true
+            fi
+          done
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: release_info.md
+          files: |
+            firmware/*
+          tag_name: latest
+          name: "Latest Build - ${{ steps.prepare.outputs.tag }}"
+          draft: false
+          prerelease: false
+          make_latest: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

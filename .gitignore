@@ -48,3 +48,4 @@ sync_ninja.sh
 build_local.sh
 push_github.sh
 build_localy.sh
+.bak
