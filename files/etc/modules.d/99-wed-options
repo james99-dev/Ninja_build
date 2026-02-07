@@ -1,0 +1,2 @@
+options mt76 wed_enable=y
+options mt7915e wed_enable=y
