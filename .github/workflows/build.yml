@@ -33,28 +33,17 @@ jobs:
           sudo apt update
           sudo apt install -y build-essential clang flex bison g++ gawk gettext libncurses-dev libssl-dev python3-setuptools rsync swig unzip zlib1g-dev file wget llvm jq
 
-      - name: Get Remote Branch and SHA
-        id: get_info
+      - name: Get Remote Branch Name
+        id: get_branch
         run: |
-          # 1. Get the latest branch name starting with 'next-'
           remote_branch=$(git ls-remote https://github.com/${{ env.REMOTE_REPOSITORY }}.git "refs/heads/next-*" | sed -e 's|\(.*heads/\)||' | grep -viE 'test|beta' | sort -V | tail -n1)
-          
-          # 2. FORCE API to look at this specific branch to get the REAL latest SHA
-          # This uses the query parameter ?sha= to bypass any stale cache on GitHub's end
-          latest_sha=$(gh api "repos/${{ env.REMOTE_REPOSITORY }}/commits?sha=${remote_branch}" --jq '.[0].sha')
-          
           echo "branch=${remote_branch}" >> $GITHUB_OUTPUT
-          echo "sha=${latest_sha}" >> $GITHUB_OUTPUT
-          
-          echo "Selected Branch: ${remote_branch}"
-          echo "Selected SHA: ${latest_sha}"
 
       - name: Checkout remote repository
         uses: actions/checkout@v4
         with:
           repository: ${{ env.REMOTE_REPOSITORY }}
-          # Use the SHA instead of the branch name to force the absolute latest code
-          ref: ${{ steps.get_info.outputs.sha }}
+          ref: ${{ steps.get_branch.outputs.branch }}
 
       - name: Checkout current repository
         uses: actions/checkout@v4
@@ -135,18 +124,17 @@ jobs:
             exit 1
           fi
           
+          MANIFEST_FILE=$(find ./bin -type f -name "*.manifest" 2>/dev/null | head -n 1)
+          
           cp -v "$ORIGINAL_FILE" ./firmware/
+          cp -v "$MANIFEST_FILE" ./firmware/ || echo "Manifest not found"
           find ./bin -name "version.buildinfo" -exec cp -v {} ./firmware/config.buildinfo \; 2>/dev/null || true
           cp .config ./firmware/config.seed
           
-          cd firmware
-          sha256sum * > sha256sums
-          cd ..
+          cd firmware && sha256sum * > sha256sums && cd ..
           
           TAG="v-$(date -u +%Y.%m.%d-%H%M)"
           echo "tag=${TAG}" >> $GITHUB_OUTPUT
-          echo "=== Files ready for release ==="
-          ls -lh firmware/
 
       - name: Delete old latest release
         continue-on-error: true

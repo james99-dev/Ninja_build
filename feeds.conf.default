@@ -1,5 +1,6 @@
-src-git packages https://github.com/openwrt/packages.git
+#src-git packages https://github.com/openwrt/packages.git
 #src-git luci https://github.com/openwrt/luci.git
 src-git routing https://github.com/openwrt/routing.git
 src-git telephony https://github.com/openwrt/telephony.git
 src-git luci https://github.com/pesa1234/luci.git;next-v4
+src-git packages https://github.com/pesa1234/packages.git;next-r4.mtk
