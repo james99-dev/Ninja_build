@@ -136,10 +136,13 @@ jobs:
           TAG="v-$(date -u +%Y.%m.%d-%H%M)"
           echo "tag=${TAG}" >> $GITHUB_OUTPUT
 
-      - name: Delete old latest release
+      - name: Delete old latest release and tag
         continue-on-error: true
         run: |
+          # Supprime la release
           gh release delete latest --yes || true
+          # Supprime le tag sur le serveur pour forcer GitHub à mettre l'heure à jour
+          git push origin :refs/tags/latest || true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
