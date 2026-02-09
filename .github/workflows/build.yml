@@ -139,10 +139,15 @@ jobs:
       - name: Delete old latest release and tag
         continue-on-error: true
         run: |
-          # Supprime la release
+          # Supprime la release via l'API GitHub
           gh release delete latest --yes || true
-          # Supprime le tag sur le serveur pour forcer GitHub à mettre l'heure à jour
-          git push origin :refs/tags/latest || true
+          
+          # Supprime le tag localement
+          git tag -d latest || true
+          
+          # Supprime le tag sur TON dépôt spécifiquement (Ninja_build)
+          # On utilise l'URL complète pour éviter de viser le repo de Pesa par erreur
+          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git :refs/tags/latest || true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
