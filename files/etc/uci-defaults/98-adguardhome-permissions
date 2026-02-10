@@ -1,0 +1,16 @@
+#!/bin/sh
+
+# Fix AdGuardHome permissions after sysupgrade
+# AdGuardHome requires strict 700 permissions on its directories for security
+
+if [ -d "/opt/AdGuardHome" ]; then
+    chmod 700 /opt/AdGuardHome
+    chmod 700 /opt/AdGuardHome/data 2>/dev/null || true
+    chmod 700 /opt/AdGuardHome/data/filters 2>/dev/null || true
+    chmod 644 /opt/AdGuardHome/data/*.yaml 2>/dev/null || true
+    
+    # Restart AdGuardHome to clear permission warnings
+    /etc/init.d/adguardhome restart 2>/dev/null || true
+fi
+
+exit 0

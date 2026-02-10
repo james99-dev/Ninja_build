@@ -26,6 +26,7 @@ public-key.pem
 *.rej
 files/etc/config/
 files/etc/uci-defaults/*
+!files/etc/uci-defaults/98-adguardhome-permissions
 !files/etc/uci-defaults/99-save-build-date
 files/root/
 files/etc/shadow
