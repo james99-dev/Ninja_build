@@ -140,7 +140,7 @@ jobs:
         continue-on-error: true
         run: |
           # Supprime la release via l'API GitHub
-          gh release delete latest --yes || true
+          gh release delete latest --yes --repo ${{ github.repository }} || true
           
           # Supprime le tag localement
           git tag -d latest || true
