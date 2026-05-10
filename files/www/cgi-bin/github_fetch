@@ -2,7 +2,7 @@
 printf 'Content-Type: application/json\n\n'
 
 # Ces variables seront remplacées par ton workflow
-REPO="XXXXXX/YYYYYY"
+REPO="james99-dev/Ninja_build"
 USER_AGENT="OpenWrt-Builder"
 LAST_ID_FILE="/etc/release_id_build"
 
